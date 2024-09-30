@@ -83,6 +83,7 @@ def regular_xorsat(k, n):
     return indices, b
 
 
+
 def plant_regular_xorsat(k, n):
     """
     Repetitively generates k-regular k-XORSAT problems until an instance
