@@ -236,7 +236,8 @@ def main():
     xor_problem = generate_random_3_xorsat(r = 3,num_variables = num_variables ,num_clauses = num_clauses )
     # check if it has a solution
     # put the planted solution in place and run the problem again
-    xorsat_hamiltonian = mapping_XORSAT_to_Hamiltonian(xor_prob)
+    xorsat_hamiltonian = {'024': 1,'045': -1,'345': 1,'012': 1,'134': 1,'145': -1, '124': 1,'013': 1} 
+    #mapping_XORSAT_to_Hamiltonian(xor_prob)
 
     # Define cost function
     cost_function = compute_max_xorsat_energy
@@ -244,16 +245,43 @@ def main():
     # Set the number of layers
     p = 2
 
-    # Run QAOA with random initial parameters
+    # initalize some initial params for the optimization
+    initial_params = np.array([2.5637967 , 3.47032884, 3.31950937, 2.83458509]) 
+
+    # backend based on the variables 
+    backend = FakeNairobiV2()
+
+    # Run QAOA with random initial parameters to find doptimized params 
     result = run_qaoa(p=p,
         xorsat_hamiltonian=xorsat_hamiltonian,
         cost_function=cost_function,
-        initial_params=None,  # Optional, will use random parameters
-    )
+        backend = backend,
+        initial_params=initial_params)
     print(result)
+    if result['success']==True:
+        optimized_params = result['x']
+
+    qc = create_qaoa_circuit(xorsat_hamiltonian, optimized_params[:p], optimized_params[p:], num_variables)
+    counts = invert_counts(backend.run(qc, shots = 100000).result().get_counts())
+
+    plot_histogram(counts,figsize=(15,8),sort='value_desc')
+    plt.show()
+    
 
 
 
 
 if __name__ == "__main__":
     main()
+
+# TODO 
+# 1. add open QASM simulator for just shot noise effect
+# 2. Add statevector from ipynb files
+# 3. implement optimization for the planted solution and plot camparsions
+# 4. Compare the planted solution between classical and qaoa solvers
+# 5. Try cVar cost function thoroughly 
+# 6. Implement functions with hamming distance
+# 7. implement these approximate ration to determine the hardness of the problem
+# 8. add fucntions to save histograms of top solutions 
+# 9. add check for the num_solution to exist for a generic problem,
+#    however planted solution definitely has one solution 
