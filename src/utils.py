@@ -110,45 +110,53 @@ def invert_counts(counts: Dict[str, int]) -> Dict[str, int]:
     # Reverse the bitstrings in the keys
     return {k[::-1]: v for k, v in counts.items()}
 
+from typing import Dict
+
 def compute_Hijk(bitstr: str, xorsat_hamiltonian: Dict[str, int]) -> int:
-    """Computes the Hijk value for a given bitstring and a xorsat hamiltonian dictionary.
+    """
+    Computes the Hijk value for a given bitstring and an xorsat hamiltonian dictionary.
     
     Parameters:
     bitstr (str): A binary string representing the bitstring (e.g., '110011').
     xorsat_hamiltonian (Dict[str, int]): A dictionary where keys are clauses (e.g., '012') and 
-                                  values are int representing xorsat solution.
-                                  
+                                         values are integers representing the xorsat solution 
+                                         (-1 or 1).
+    
     Returns:
-    int: The computed Hijk value.
+    int: The computed Hijk value based on the given bitstring and the xorsat hamiltonian.
     
     Raises:
-    ValueError: If bitstr contains invalid characters (anything other than '0' or '1').
-    KeyError: If a key in xorsat_hamiltonian does not map to valid indices in bitstr.
+    ValueError: If the bitstr contains invalid characters (anything other than '0' or '1').
+    KeyError: If a key in xorsat_hamiltonian refers to indices that are out of bounds in bitstr.
     """
     # Validate the bitstring (only '0' and '1' allowed)
     if not all(bit in '01' for bit in bitstr):
         raise ValueError("bitstr must be a binary string (containing only '0' and '1').")
-
-    # Initialize total Hijk value
+    
+    # Initialize the total Hijk value
     tot_hijk = 0
-    for key, val in xorsat_hamiltonian.items():
-         # Ensure all characters in the key are valid indices in the bitstr
+    
+    # Loop through each clause in the xorsat_hamiltonian
+    for clause_key, clause_result in xorsat_hamiltonian.items():
+        # Extract bits from the bitstring according to the clause key
         try:
-            bits = [int(bitstr[int(index)]) for index in key]
+            bits = [int(bitstr[int(index)]) for index in clause_key]
         except IndexError:
-            raise KeyError(f"Key '{key}' contains indices that are out of bounds for the bitstring.")
-
-        # Compute the hijk value for the current term
-        hijk_val =1
+            raise KeyError(f"Key '{clause_key}' contains indices that are out of bounds for the bitstring.")
+        
+        # Compute the hijk value for the current clause
+        hijk_val = 1
         for bit in bits:
-            # Modify hijk_val by the value and sign of Vijk
-            hijk_val *= - val * (-1)**bit
-        # Add the computed hijk value to the total
-        tot_hijk+=hijk_val
+            # Calculate the contribution of the current bit to hijk_val
+            hijk_val *= -clause_result * (-1) ** bit
+        
+        # Add the computed hijk_val to the total
+        tot_hijk += hijk_val
     
     return tot_hijk
 
-from typing import Dict
+
+
 
 def compute_satisfied_constraints(bitstr: str, xorsat_hamiltonian: Dict[str, int]) -> int:
     """
@@ -190,7 +198,39 @@ def compute_satisfied_constraints(bitstr: str, xorsat_hamiltonian: Dict[str, int
     return num_sat_constraints
 
 
-compute_satisfied_constraints()
+def compute_max_xorsat_energy(counts: Dict[str, int], compute_Hijk) -> float:
+    """
+    Computes the maximum XORSAT energy based on measurement counts and their respective objective values.
+    
+    Parameters:
+    counts (Dict[str, int]): A dictionary where keys are bitstrings (measurement outcomes) and 
+                             values are the number of times each bitstring was measured.
+    compute_Hijk (function): A function that computes the Hijk value for a given bitstring.
+
+    Returns:
+    float: The normalized XORSAT energy.
+
+    Raises:
+    ValueError: If the counts dictionary is empty or total measurement count is zero.
+    """
+    if not counts:
+        raise ValueError("The counts dictionary is empty.")
+    
+    energy = 0
+    total_count = 0
+    
+    # Calculate the energy based on measurement outcomes and their counts
+    for meas, meas_count in counts.items():
+        obj_4_meas = compute_Hijk(bitstr=meas)  # Compute the objective value (Hijk) for each bitstring
+        energy += obj_4_meas * meas_count
+        total_count += meas_count
+    
+    if total_count == 0:
+        raise ValueError("Total count of measurements is zero, cannot compute energy.")
+
+    return energy / total_count
+
+
 
 xor_prob =   (np.array([[2, 4, 5],
        [0, 1, 4],
