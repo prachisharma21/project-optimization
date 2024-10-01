@@ -286,3 +286,4 @@ xor_prob =   (np.array([[2, 4, 5],
  np.array([1, 1, 0, 0, 1, 1, 1, 1]))
 
 #print(mapping_XORSAT_to_Hamiltonian(xor_prob))
+
