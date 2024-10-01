@@ -85,6 +85,113 @@ def mapping_XORSAT_to_Hamiltonian(xor_prob: Tuple[np.ndarray, np.ndarray]) -> Di
 
     return xorsat_hamiltonian 
 
+
+def invert_counts(counts: Dict[str, int]) -> Dict[str, int]:
+    """
+    Reverses the bitstring keys in the given dictionary of counts.
+    
+    Parameters:
+    counts (Dict[str, int]): A dictionary where the keys are bitstrings (binary strings) 
+                             and the values are integer counts.
+                             
+    Returns:
+    Dict[str, int]: A new dictionary with the bitstrings reversed in the keys.
+    
+    Raises:
+    ValueError: If any of the keys are not strings or if any of the values are not integers.
+    """
+    # Input validation
+    if not all(isinstance(k, str) for k in counts.keys()):
+        raise ValueError("All keys must be strings representing bitstrings.")
+    
+    if not all(isinstance(v, int) for v in counts.values()):
+        raise ValueError("All values must be integers representing counts.")
+    
+    # Reverse the bitstrings in the keys
+    return {k[::-1]: v for k, v in counts.items()}
+
+def compute_Hijk(bitstr: str, xorsat_hamiltonian: Dict[str, int]) -> int:
+    """Computes the Hijk value for a given bitstring and a xorsat hamiltonian dictionary.
+    
+    Parameters:
+    bitstr (str): A binary string representing the bitstring (e.g., '110011').
+    xorsat_hamiltonian (Dict[str, int]): A dictionary where keys are clauses (e.g., '012') and 
+                                  values are int representing xorsat solution.
+                                  
+    Returns:
+    int: The computed Hijk value.
+    
+    Raises:
+    ValueError: If bitstr contains invalid characters (anything other than '0' or '1').
+    KeyError: If a key in xorsat_hamiltonian does not map to valid indices in bitstr.
+    """
+    # Validate the bitstring (only '0' and '1' allowed)
+    if not all(bit in '01' for bit in bitstr):
+        raise ValueError("bitstr must be a binary string (containing only '0' and '1').")
+
+    # Initialize total Hijk value
+    tot_hijk = 0
+    for key, val in xorsat_hamiltonian.items():
+         # Ensure all characters in the key are valid indices in the bitstr
+        try:
+            bits = [int(bitstr[int(index)]) for index in key]
+        except IndexError:
+            raise KeyError(f"Key '{key}' contains indices that are out of bounds for the bitstring.")
+
+        # Compute the hijk value for the current term
+        hijk_val =1
+        for bit in bits:
+            # Modify hijk_val by the value and sign of Vijk
+            hijk_val *= - val * (-1)**bit
+        # Add the computed hijk value to the total
+        tot_hijk+=hijk_val
+    
+    return tot_hijk
+
+from typing import Dict
+
+def compute_satisfied_constraints(bitstr: str, xorsat_hamiltonian: Dict[str, int]) -> int:
+    """
+    Calculates the number of satisfied constraints (clauses) for a given bitstring 
+    in an XORSAT problem, based on the provided xorsat_hamiltonian.
+
+    Parameters:
+    bitstr (str): A binary string representing the bitstring (e.g., '110011').
+    xorsat_hamiltonian (Dict[str, int]): A dictionary where keys represent clauses 
+                                         (e.g., '012' for bits at positions 0, 1, and 2) and 
+                                         values are integers (either 1 or -1) representing 
+                                         whether the clause is satisfied or not.
+
+    Returns:
+    int: The number of satisfied constraints (clauses).
+    
+    Raises:
+    ValueError: If bitstr contains invalid characters (anything other than '0' or '1').
+    KeyError: If a key in xorsat_hamiltonian does not map to valid indices in bitstr.
+    """
+    # Validate that bitstr only contains '0' or '1'
+    if not all(bit in '01' for bit in bitstr):
+        raise ValueError("bitstr must be a binary string (containing only '0' and '1').")
+    
+    num_sat_constraints = 0  # Initialize the count of satisfied constraints
+    
+    # Loop through the clauses in the xorsat_hamiltonian dictionary
+    for clause_key, clause_result in xorsat_hamiltonian.items():
+        # Extract the bits from the bitstring corresponding to the current clause
+        try:
+            bits = [int(bitstr[int(index)]) for index in clause_key]
+        except IndexError:
+            raise KeyError(f"Clause key '{clause_key}' contains indices that are out of bounds for the bitstring.")
+        
+        # Check if the bitstring satisfies the current clause
+        if (-1) ** (sum(bits) % 2) == clause_result:
+            num_sat_constraints += 1
+    
+    return num_sat_constraints
+
+
+compute_satisfied_constraints()
+
 xor_prob =   (np.array([[2, 4, 5],
        [0, 1, 4],
        [0, 3, 4],
