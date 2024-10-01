@@ -157,7 +157,7 @@ def get_black_box_objective_with_cost(
     Parameters:
     - p (int): Number of layers in the QAOA circuit.
     - prob_stat (Dict[str, float]): Problem statistics for QAOA.
-    - cost_function (Callable[[Dict[str, int]], float]): Function to compute energy from counts.
+    - cost_function (Callable[[Dict[str, int]], float]): Function to compute energy from counts like compute_max_xorsat_energy orcompute_max_xorsat_energy_cVar
     - backend: The quantum backend to run the circuit on. Defaults to FakeNairobiV2.
     - shots (int): Number of shots for the circuit execution.
 
@@ -194,12 +194,30 @@ def get_black_box_objective_with_cost(
         energy = cost_function(invert_counts(counts=counts))
         
         print("Computed Energy:", energy)  # Optional logging for debugging
-        
+
         # to plot the cost function with number of iterations 
         obj_cost.append(energy)
         return energy
 
     return objective_function
+
+
+def run_qaoa(p: int,
+    xorsat_hamiltonian: Dict[str, float],
+    cost_function: Callable[[Dict[str, int]], float],
+    backend=FakeNairobiV2(), 
+    shots: int = 1024,
+    initial_params: np.ndarray = None):
+    # Generate random initial parameters if none are provided
+    if initial_params is None:
+        initial_params = np.random.uniform(0, np.pi, 2 * p)
+
+    # Retrieve the objective function based on the cost function and Hamiltonian
+    obj_function = get_black_box_objective_with_cost(p,xorsat_hamiltonian, backend, shots)
+    # Run the optimizer (COBYLA method : can be done using others)
+    res_sample = minimize(obj_function, initial_params, method='COBYLA', options={'maxiter':5000,'disp': True})
+    return res_sample
+
 # Define a constant for the number of shots
 SHOTS = 1024
 
