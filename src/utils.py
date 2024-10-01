@@ -230,7 +230,42 @@ def compute_max_xorsat_energy(counts: Dict[str, int], compute_Hijk) -> float:
 
     return energy / total_count
 
+def compute_max_xorsat_energy_cVar(counts: Dict[str, int]) -> float:
+    """
+    Computes the average energy of the lowest 7 (to be changed later) measurement outcomes in the XORSAT problem.
 
+    Parameters:
+    counts (Dict[str, int]): A dictionary where keys are measurement outcomes (bitstrings)
+                              and values are the corresponding counts.
+
+    Returns:
+    float: The average energy of the lowest 7 measurement outcomes, normalized by total count.
+    
+    Raises:
+    ValueError: If counts are empty or do not contain valid measurement data.
+    """
+    if not counts:
+        raise ValueError("The counts dictionary is empty. Please provide valid measurement counts.")
+
+    low_energies = defaultdict(tuple)
+    energy = 0
+    total_count = 0
+
+    for meas, meas_count in counts.items():
+        obj_4_meas = compute_Hijk(bitstr=meas)
+        low_energies[meas] = (meas_count, obj_4_meas)
+
+    # Sort the low_energies dictionary by the objective value and select the lowest 7
+    energy_10 = dict(sorted(low_energies.items(), key=lambda x: x[1][1])[:7])
+    
+    for basis, val in energy_10.items():
+        energy += val[1] * val[0]  # Weighted energy
+        total_count += val[0]      # Total counts of selected measurements
+
+    if total_count == 0:
+        raise ValueError("Total count of measurements is zero. Cannot compute average energy.")
+    # Return the average energy based on the selected measurements
+    return energy / (7 * total_count)  
 
 xor_prob =   (np.array([[2, 4, 5],
        [0, 1, 4],
