@@ -198,14 +198,18 @@ def compute_satisfied_constraints(bitstr: str, xorsat_hamiltonian: Dict[str, int
     return num_sat_constraints
 
 
-def compute_max_xorsat_energy(counts: Dict[str, int], compute_Hijk) -> float:
+def compute_max_xorsat_energy(counts: Dict[str, int], xorsat_hamiltonian: Dict[str, int]) -> float:
     """
     Computes the maximum XORSAT energy based on measurement counts and their respective objective values.
     
     Parameters:
     counts (Dict[str, int]): A dictionary where keys are bitstrings (measurement outcomes) and 
                              values are the number of times each bitstring was measured.
-    compute_Hijk (function): A function that computes the Hijk value for a given bitstring.
+    # compute_Hijk (function): A function that computes the Hijk value for a given bitstring.
+    xorsat_hamiltonian (Dict[str, int]): A dictionary where keys represent clauses 
+                                         (e.g., '012' for bits at positions 0, 1, and 2) and 
+                                         values are integers (either 1 or -1) representing 
+                                         whether the clause is satisfied or not.
 
     Returns:
     float: The normalized XORSAT energy.
@@ -221,7 +225,7 @@ def compute_max_xorsat_energy(counts: Dict[str, int], compute_Hijk) -> float:
     
     # Calculate the energy based on measurement outcomes and their counts
     for meas, meas_count in counts.items():
-        obj_4_meas = compute_Hijk(bitstr=meas)  # Compute the objective value (Hijk) for each bitstring
+        obj_4_meas = compute_Hijk(bitstr=meas, xorsat_hamiltonian= xorsat_hamiltonian)  # Compute the objective value (Hijk) for each bitstring
         energy += obj_4_meas * meas_count
         total_count += meas_count
     
@@ -230,13 +234,18 @@ def compute_max_xorsat_energy(counts: Dict[str, int], compute_Hijk) -> float:
 
     return energy / total_count
 
-def compute_max_xorsat_energy_cVar(counts: Dict[str, int]) -> float:
+def compute_max_xorsat_energy_cVar(counts: Dict[str, int], xorsat_hamiltonian: Dict[str, int]) -> float:
     """
     Computes the average energy of the lowest 7 (to be changed later) measurement outcomes in the XORSAT problem.
 
     Parameters:
     counts (Dict[str, int]): A dictionary where keys are measurement outcomes (bitstrings)
                               and values are the corresponding counts.
+    xorsat_hamiltonian (Dict[str, int]): A dictionary where keys represent clauses 
+                                         (e.g., '012' for bits at positions 0, 1, and 2) and 
+                                         values are integers (either 1 or -1) representing 
+                                         whether the clause is satisfied or not.
+
 
     Returns:
     float: The average energy of the lowest 7 measurement outcomes, normalized by total count.
@@ -252,7 +261,7 @@ def compute_max_xorsat_energy_cVar(counts: Dict[str, int]) -> float:
     total_count = 0
 
     for meas, meas_count in counts.items():
-        obj_4_meas = compute_Hijk(bitstr=meas)
+        obj_4_meas = compute_Hijk(bitstr=meas,xorsat_hamiltonian= xorsat_hamiltonian )
         low_energies[meas] = (meas_count, obj_4_meas)
 
     # Sort the low_energies dictionary by the objective value and select the lowest 7

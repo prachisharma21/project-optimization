@@ -1,11 +1,16 @@
 import numpy as np 
-from typing import Dict, List, Tuple
-from qiskit import QuantumCircuit
+from typing import Dict, List, Tuple, Callable
+from qiskit import QuantumCircuit, Aer, transpile 
+from qiskit.visualization import plot_gate_map, plot_error_map, plot_histogram
+from qiskit.providers.fake_provider import FakeNairobiV2
+from scipy.optimize import minimize
+from utils import * 
+from xorsat_clauses import *
 
 # vars changed Nvertices->num_variables, prob_stat-> xorsat_hamiltonian
 
 def create_qaoa_circuit(xorsat_hamiltonian: Dict[str, int], beta: List[float], gamma: List[float], num_variables: int) -> QuantumCircuit:
-     """
+    """
     Creates a QAOA quantum circuit for the given XOR-SAT Hamiltonian, beta, and gamma parameters.
 
     Parameters:
@@ -127,7 +132,7 @@ def cost_function(p: int, xorsat_hamiltonian: dict) -> Callable[[List[float]], f
         gamma = theta[p:]
 
         # Create the QAOA circuit
-        qc = create_qaoa_circuit(prob_stat, beta, gamma)
+        qc = create_qaoa_circuit(xorsat_hamiltonian, beta, gamma)
 
         # Run the circuit and get counts
         counts = backend.run(transpile(qc), shots=SHOTS).result().get_counts()
@@ -146,20 +151,22 @@ def cost_function(p: int, xorsat_hamiltonian: dict) -> Callable[[List[float]], f
 
 def get_black_box_objective_with_cost(
     p: int,
+    num_variables: int,
     xorsat_hamiltonian: Dict[str, float],
     cost_function: Callable[[Dict[str, int]], float],
     backend=FakeNairobiV2(), 
-    shots: int = 1024  # Default number of shots for circuit execution
+    shots: int = 1024,  # Default number of shots for circuit execution
 ) -> Callable[[List[float]], float]:
     """
     Creates a black box objective function for QAOA optimization.
 
     Parameters:
     - p (int): Number of layers in the QAOA circuit.
-    - prob_stat (Dict[str, float]): Problem statistics for QAOA.
+    - xorsat_hamiltonian (Dict[str, float]): Problem statistics for QAOA.
     - cost_function (Callable[[Dict[str, int]], float]): Function to compute energy from counts like compute_max_xorsat_energy orcompute_max_xorsat_energy_cVar
     - backend: The quantum backend to run the circuit on. Defaults to FakeNairobiV2.
     - shots (int): Number of shots for the circuit execution.
+    - num_variables (int): number of variables in the XORSAT problem 
 
     Returns:
     - Callable[[List[float]], float]: A callable function that computes the objective.
@@ -185,18 +192,18 @@ def get_black_box_objective_with_cost(
         gamma = theta[p:]
 
         # Create the QAOA circuit
-        qc = create_qaoa_circuit(prob_stat, beta, gamma)
+        qc = create_qaoa_circuit(xorsat_hamiltonian, beta, gamma, num_variables)
 
         # Execute the circuit on the specified backend
         counts = backend.run(transpile(qc), shots=shots).result().get_counts()
 
         # Compute the energy using the specified cost function
-        energy = cost_function(invert_counts(counts=counts))
+        energy = cost_function(invert_counts(counts=counts), xorsat_hamiltonian)
         
         print("Computed Energy:", energy)  # Optional logging for debugging
 
         # to plot the cost function with number of iterations 
-        obj_cost.append(energy)
+        # obj_cost.append(energy)
         return energy
 
     return objective_function
@@ -213,12 +220,40 @@ def run_qaoa(p: int,
         initial_params = np.random.uniform(0, np.pi, 2 * p)
 
     # Retrieve the objective function based on the cost function and Hamiltonian
-    obj_function = get_black_box_objective_with_cost(p,xorsat_hamiltonian, backend, shots)
+    obj_function = get_black_box_objective_with_cost(p,num_variables, xorsat_hamiltonian, cost_function, backend, shots)
     # Run the optimizer (COBYLA method : can be done using others)
     res_sample = minimize(obj_function, initial_params, method='COBYLA', options={'maxiter':5000,'disp': True})
     return res_sample
 
-# Define a constant for the number of shots
-SHOTS = 1024
 
-obj_cost = []
+def main():
+    # Define a constant for the number of shots
+    SHOTS = 1024
+    obj_cost = []
+    # number of variables in XORSAT problem 
+    num_variables = 6
+    num_clauses = 8
+    xor_problem = generate_random_3_xorsat(r = 3,num_variables = num_variables ,num_clauses = num_clauses )
+    # check if it has a solution
+    # put the planted solution in place and run the problem again
+    xorsat_hamiltonian = mapping_XORSAT_to_Hamiltonian(xor_prob)
+
+    # Define cost function
+    cost_function = compute_max_xorsat_energy
+    
+    # Set the number of layers
+    p = 2
+
+    # Run QAOA with random initial parameters
+    result = run_qaoa(p=p,
+        xorsat_hamiltonian=xorsat_hamiltonian,
+        cost_function=cost_function,
+        initial_params=None,  # Optional, will use random parameters
+    )
+    print(result)
+
+
+
+
+if __name__ == "__main__":
+    main()
