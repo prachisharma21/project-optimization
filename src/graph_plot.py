@@ -24,6 +24,7 @@ def xorsat_problem_for_plotting(xorsat_problem=tuple, num_variables=int):
     ---------------
     xorsat_problem = ([[0, 1, 2], [1, 2, 3]], [0, 1])
     num_variables = 4
+    
     variables, constraints = xorsat_problem_for_plotting(xorsat_problem, num_variables)
     # variables -> ['x0', 'x1', 'x2', 'x3']
     # constraints -> [([0, 1, 2], 0), ([1, 2, 3], 1)]
